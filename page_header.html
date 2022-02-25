@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8" />
+<title>道具屋</title>
+</head>
+<body>
+
+<th:block th:fragment="pageHeader">
+	<script src="http://code.jquery.com/jquery-3.4.1.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+	<link rel="stylesheet"
+			href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
+	<script src="/js/util/stringUtil.js" th:src="@{/js/util/stringUtil.js}"></script>
+	<script th:inline="javascript">
+	/*<![CDATA[*/
+	$(() => {
+		/**
+		 * ダイアログの初期設定オブジェクトを持つネームスペース
+		 */
+		const dialogConfig = {
+			loginError: {
+				autoOpen: false,
+				width: 550,
+				modal: true,
+				buttons: [
+					{
+						text: 'OK',
+						click: function() {
+							$(this).dialog('close');
+						}
+					},
+				]
+			},
+		};
+		
+		$('#loginError').dialog(dialogConfig.loginError);
+		
+		$('button#login').on('click', () => {
+			let jsonString = {
+				'userName': $('div.loginArea input[name=userName]').val(),
+				'password': $('div.loginArea input[name=password]').val()
+			};
+			$.ajax({
+				type: 'POST',
+				url: '/amethyst/auth/login',
+				data: JSON.stringify(jsonString),
+				contentType: 'application/json',
+				datatype: 'json',
+				scriptCharset: 'utf-8'
+			})
+			.then((result) => {
+				let user = JSON.parse(result);
+				if (isEmpty(user)) {
+					$('#hiddenUserName').val('');
+					$('#loginError').dialog('open');
+				} else {
+					$('#hiddenUserName').val(user['userName']);
+					login(user);
+				}
+			}, () => {
+				alert('Error: ajax connection failed.');
+			});
+		});
+		
+		$('button#logout').on('click', () => {
+			$.ajax({
+				type: 'POST',
+				url: '/amethyst/auth/logout',
+				scriptCharset: 'utf-8'
+			})
+			.then((result) => {
+				$('#hiddenUserName').val('');
+				logout();
+				alert('ログアウトしました。');
+				location.replace('/amethyst/');
+			}, () => {
+				alert('Error: ajax connection failed.');
+			});
+		});
+		
+	});
+	
+	function login(user) {
+		let userName = user['userName'];
+		$('.welcomeMsg').text(`ようこそ！ ${userName} さん`);
+		if (isEmpty($('button#login').prop('class'))) {
+			$('button#login').addClass('hidden');
+			$('button#logout').removeClass('hidden');
+		}
+		
+		$('div.loginArea input[name=userName]').val('');
+		$('div.loginArea input[name=password]').val('');
+	}
+	
+	function logout() {
+		$('.welcomeMsg').text(`ようこそ！ ゲスト さん`);
+		if (isEmpty($('button#logout').prop('class'))) {
+			$('button#logout').addClass('hidden');
+			$('button#login').removeClass('hidden');
+		}
+		
+		$('div.loginArea input[name=userName]').val('');
+		$('div.loginArea input[name=password]').val('');
+	}
+	/*]]>*/
+	</script>
+	<div class="headerTop">
+		<h1 class="logo"><a href="/amethyst/">道具屋</a></h1>
+		<span class="welcomeMsg"
+			th:text="'ようこそ！ ' + ${loginSession == null || loginSession.getUserName() == null ? 'ゲスト さん' : loginSession.getUserName() + ' さん'}"></span>
+	</div>
+	 
+	<nav>
+		<div class="loginArea">
+			<input type="text" name="userName" />
+			<input type="password" name="password" />
+			<input type="hidden" id="hiddenUserName" value="" />
+			<button id="login" th:class="${loginSession == null || loginSession.getUserName() == null ? '' : 'hidden'}">ログイン</button>
+			<button id="logout" th:class="${loginSession == null || loginSession.getUserName() == null ? 'hidden' : ''}">ログアウト</button>
+		</div>
+		<ul class="menu">
+			<li id="cartMenu"><a href="/amethyst/cart/">カート</a></li>
+		</ul>
+	</nav>
+
+	<div th:insert="fragments/dialog_login_error::dialogLoginError"></div>
+</th:block>
+
+</body>
+</html>
